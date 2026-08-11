@@ -1,55 +1,104 @@
 const int B = 20;
 const int N = 1 << B;
 
-struct MaxAND_Trie {
-    vector<vector<int>> trie;
-    vector<bool> vis;
-    int mxBit, sz;
+struct MaxAND {
+    struct Node {
+        int next[2];
+        int cnt; // عداد لمعرفة كم رقم معدي على النود دي
+        Node() {
+            next[0] = next[1] = -1;
+            cnt = 0;
+        }
+    };
+
+    vector<Node> trie;
+    vector<int> ref_cnt; // عداد للأرقام اللي زارها الـ DFS
+    int mxBit;
 
     int addNode() {
-        trie.emplace_back(2, -1);
-        return sz++;
+        trie.emplace_back();
+        return trie.size() - 1;
     }
 
-    MaxAND_Trie(int mx = B - 1) : mxBit(mx), sz(0), vis(N, false) {
-        addNode();
+    MaxAND(int mx = B - 1) : mxBit(mx), ref_cnt(N, 0) {
+        addNode(); // Root Node
     }
 
-    void insert(long long x) {
+    // إدراج عادي في الـ Trie
+    void insertNode(long long x) {
         int cur = 0;
+        trie[cur].cnt++;
         for (int i = mxBit; i >= 0; --i) {
             int t = (x >> i) & 1LL;
-            if (trie[cur][t] == -1)
-                trie[cur][t] = addNode();
-            cur = trie[cur][t];
+            if (trie[cur].next[t] == -1)
+                trie[cur].next[t] = addNode();
+            cur = trie[cur].next[t];
+            trie[cur].cnt++; // زيادة العداد
         }
     }
 
-    void dfs(long long x) {
-        if (vis[x]) return;
-        vis[x] = true;
-        insert(x);
-        for (int i = 0; i < B; ++i) {
-            if ((x >> i) & 1LL) {
-                dfs(x ^ (1LL << i));
+    // حذف عادي من الـ Trie
+    void removeNode(long long x) {
+        int cur = 0;
+        trie[cur].cnt--;
+        for (int i = mxBit; i >= 0; --i) {
+            int t = (x >> i) & 1LL;
+            cur = trie[cur].next[t];
+            trie[cur].cnt--; // تنقيص العداد
+        }
+    }
+
+    // DFS للإدراج (Subsets)
+    void insertDFS(long long x) {
+        ref_cnt[x]++;
+        if (ref_cnt[x] == 1) {
+            // أول مرة نولد الـ subset ده
+            insertNode(x);
+            for (int i = 0; i < B; ++i) {
+                if ((x >> i) & 1LL) {
+                    insertDFS(x ^ (1LL << i));
+                }
             }
         }
     }
 
+    // DFS للحذف (Subsets)
+    void removeDFS(long long x) {
+        if (ref_cnt[x] == 0) return; // الرقم مش موجود اصلاً
+        ref_cnt[x]--;
+        if (ref_cnt[x] == 0) {
+            // اتلغى تماماً
+            removeNode(x);
+            for (int i = 0; i < B; ++i) {
+                if ((x >> i) & 1LL) {
+                    removeDFS(x ^ (1LL << i));
+                }
+            }
+        }
+    }
+
+    // الاستعلام مع التأكد إن cnt > 0
     long long get(long long x) {
+        if (trie[0].cnt == 0) return -1; // الـ Trie فاضية تماماً
+
         int cur = 0, ans = 0;
         for (int i = mxBit; i >= 0; --i) {
             int t = (x >> i) & 1LL;
             if (t) {
-                if (trie[cur][1] != -1) {
+                int ch = trie[cur].next[1];
+                if (ch != -1 && trie[ch].cnt > 0) {
                     ans |= (1LL << i);
-                    cur = trie[cur][1];
+                    cur = ch;
                 } else {
-                    cur = trie[cur][0];
+                    cur = trie[cur].next[0];
                 }
             } else {
-                if (trie[cur][0] != -1) cur = trie[cur][0];
-                else cur = trie[cur][1];
+                int ch = trie[cur].next[0];
+                if (ch != -1 && trie[ch].cnt > 0) {
+                    cur = ch;
+                } else {
+                    cur = trie[cur].next[1];
+                }
             }
         }
         return ans;
