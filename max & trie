@@ -1,54 +1,57 @@
 const int B = 20;
 const int N = 1 << B;
-bool vis[N];
- 
- 
-struct Trie {
-    vector<vector<int> > trie;
+
+struct MaxAND_Trie {
+    vector<vector<int>> trie;
+    vector<bool> vis;
     int mxBit, sz;
- 
+
     int addNode() {
         trie.emplace_back(2, -1);
-        sz++;
-        return sz - 1;
+        return sz++;
     }
- 
-    Trie(int mx = 19) : mxBit(mx), sz(0) {
+
+    MaxAND_Trie(int mx = B - 1) : mxBit(mx), sz(0), vis(N, false) {
         addNode();
-    };
- 
-    void insert(int x, int type = 1) {
+    }
+
+    void insert(long long x) {
         int cur = 0;
         for (int i = mxBit; i >= 0; --i) {
-            int t = (x >> i) & 1;
+            int t = (x >> i) & 1LL;
             if (trie[cur][t] == -1)
                 trie[cur][t] = addNode();
             cur = trie[cur][t];
         }
     }
- 
-    int get(int x) {
-        int cur = 0;
-        int ans = 0;
-        for (int i = mxBit; i >= 0; --i) {
-            int t = (x >> i) & 1;
-            if (trie[cur][t] == -1) {
-                t ^= 1;
+
+    void dfs(long long x) {
+        if (vis[x]) return;
+        vis[x] = true;
+        insert(x);
+        for (int i = 0; i < B; ++i) {
+            if ((x >> i) & 1LL) {
+                dfs(x ^ (1LL << i));
             }
-            ans |= (t << i);
-            cur = trie[cur][t];
+        }
+    }
+
+    long long get(long long x) {
+        int cur = 0, ans = 0;
+        for (int i = mxBit; i >= 0; --i) {
+            int t = (x >> i) & 1LL;
+            if (t) {
+                if (trie[cur][1] != -1) {
+                    ans |= (1LL << i);
+                    cur = trie[cur][1];
+                } else {
+                    cur = trie[cur][0];
+                }
+            } else {
+                if (trie[cur][0] != -1) cur = trie[cur][0];
+                else cur = trie[cur][1];
+            }
         }
         return ans;
     }
 };
- 
-void dfs(int x, Trie &trie) {
-    if (vis[x]) return;
-    vis[x] = true;
-    trie.insert(x);
-    for (int i = 0; i < B; ++i) {
-        if (x >> i & 1) {
-            dfs(x ^ (1 << i), trie);
-        }
-    }
-}
